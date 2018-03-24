@@ -29,7 +29,7 @@
 (require 'ob)
 
 ;; (lambda (text) (setq body (concat text "\n" body)))
-(defun ob-spice-vector-search (body vars)
+(defun org-babel-spice-vector-search (body vars)
   "Replace first instance in BODY for all VARS."
   (mapc (lambda (pair)
 	  (if (string-match (format
@@ -60,7 +60,7 @@
     ;; preceding or succeeding spaces.
     (while (not (string= old-body body))
       (setq old-body body)
-      (setq body (ob-spice-vector-search body vars))
+      (setq body (org-babel-spice-vector-search body vars))
       )
     ;; replace any variable names preceded by '$' with the actual
     ;; value of the variable. Matches only with succeeding space or
