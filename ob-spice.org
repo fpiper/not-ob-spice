@@ -39,8 +39,17 @@
 - option to return content of generated gnuplot .plt for easy use with
   :post {generic gnuplot block}
   - Full .plt or just data points?
+** [0/4] Flags
+*** NEXT [#C] :netlist
+Name of src block to include for netlist
+*** NEXT [#B] :dir
+working directory to start ngspice in
+*** NEXT [#B] :file?
+default filename to use for 
+*** NEXT :gnuplot
+name of gnuplot block or .plt file to prepend to each plot
 ** DONE Variable replacement in spice body
-** NEXT Execution using ngspice
+** INPROGRESS Execution using ngspice
 *** NEXT Steps to using interactive mode
 - Output to a rawfile dumps all node data: ~ngspice -b -r x.raw
   y.cir~. Can be loaded in interactive mode with ~load filename~.
@@ -56,6 +65,11 @@
 #+BEGIN_SRC emacs-lisp :tangle no
   (add-to-list 'load-path "~/.emacs.d/lisp/ob-spice")
 #+END_SRC
+** vars
+#+BEGIN_SRC emacs-lisp
+  (defvar org-babel-spice-eoe-indicator ":org_babel_spice_eoe"
+    "String to indicate that evaluation has completed.")
+#+END_SRC
 ** Session handling
 #+BEGIN_SRC emacs-lisp
   (defvar org-babel-spice-command "ngspice"
@@ -64,6 +78,7 @@
     "Initiate a ngspice session.
   Create comint buffer SESSION running ngspice."
     (let ((sessionname (or session "spice")))
+      ;; set default-directory to start process in other than current dir
       (make-comint sessionname org-babel-spice-command)))
 
   (defun org-babel-prep-session:spice (session params)
@@ -156,7 +171,7 @@ Access with ~$x[0]~ or ~$x[2-len]~.
                           body)))
             vars)
       ;; 
-    
+
       ;; TODO :file stuff ....
 
       ;; add prologue/epilogue
@@ -168,9 +183,29 @@ Access with ~$x[0]~ or ~$x[2-len]~.
 #+BEGIN_SRC emacs-lisp
   (defun org-babel-execute:spice-exp (body params)
     "Execute a block of Spice code with Babel.
-  This function is called by `org-babel-execute-src-block'."
-    (let ((body (org-babel-expand-body:spice-exp body params))
-          (gnuplot (cdr (assq :gnuplot params))))
+    This function is called by `org-babel-execute-src-block'."
+    (let* ((body (org-babel-expand-body:spice-exp body params))
+           (gnuplot (cdr (assq :gnuplot params)))
+           (session (org-babel-spice-initiate-session
+                     (cdr (assq :session params))))
+           (no-source (cdr (assq :no-source params)))
+           (full-body (if no-source
+                          (org-babel-expand-body:generic
+                           body params (org-babel-variable-assignments:spice params))))
+           (body-file (if (not no-source)
+                          (org-babel-temp-file "spice-body-")))
+           (result))
+
+      (if no-source
+          ;; Run body directly
+          (progn
+            (setq result (org-babel-spice-evaluate session full-body)))
+        ;; Source body
+        ;; Todo: Replace vars in body before inserting
+        ;; replacing with set does not work when using source
+        (with-temp-file body-file (insert body))
+        (setq result (org-babel-spice-source session
+                                             body-file)))
 
       ;; TODO deal with temporary files
 
@@ -186,18 +221,42 @@ Access with ~$x[0]~ or ~$x[2-len]~.
                                           ;nowebbing spice into gnuplot
         nil ;return normal spice output
         )
+      result
       ))
+    (defun org-babel-spice-source (buffer file)
+      "Source FILE in ngspice process running in BUFFER and return results."
+      (let ((body (concat "source " file)))
+        (org-babel-spice-evaluate (buffer body))))
+    (defun org-babel-spice-evaluate (buffer body)
+      "Pass BODY to ngspice process in BUFFER and return results."
+      (let ((eoe-string (format "echo \"%s\"" org-babel-spice-eoe-indicator)))
+        ;; Force session to be ready
+        ;;(org-babel-comint-with-output
+        ;;    (buffer org-babel-spice-eoe-indicator t eoe-string)
+        ;;  (insert eoe-string) (comint-send-input nil t))
+        ;; Eval body
+        (replace-regexp-in-string
+         "^ngspice [0-9]+ -> " ""
+         (mapconcat
+          #'identity
+          (butlast
+           (cdr
+            (split-string
+             (mapconcat
+              #'org-trim
+              (org-babel-comint-with-output (buffer org-babel-spice-eoe-indicator t body)
+                (mapcar (lambda (line)
+                          (insert (org-babel-chomp line)) (comint-send-input nil t))
+                        (list body
+                              eoe-string
+                              "\n")))
+              "\n") "[\r\n]")) 2) "\n"))
+        ))
 
-
-  (provide 'ob-spice-exp)
-  ;;; ob-spice.el ends here
+    (provide 'ob-spice-exp)
+    ;;; ob-spice.el ends here
 #+END_SRC
-** vars
-#+BEGIN_SRC emacs-lisp
-  (defvar org-babel-spice-eoe-indicator ":org_babel_spice_eoe"
-    "String to indicate that evaluation has completed.")
 
-#+END_SRC
 * Tests
 #+BEGIN_SRC spice-exp :var x="4" :session spicetest :no-source yes
 echo "Hello World"
