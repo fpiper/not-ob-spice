@@ -199,11 +199,15 @@ Access with ~$x[0]~ or ~$x[2-len]~.
 
 #+END_SRC
 * Tests
-#+BEGIN_SRC spice-exp :var x="4" :session
-
+#+BEGIN_SRC spice-exp :var x="4" :session spicetest :no-source yes
+echo "Hello World"
 #+END_SRC
-#+BEGIN_SRC spice-exp :var file="/tmp/spice_test" :results drawer
-  *Time Constant Measurement
+
+#+RESULTS:
+: Hello World
+
+#+BEGIN_SRC spice-exp :var file="/tmp/spice_test" :results drawer :session spicetest
+  ,*Time Constant Measurement
   r1 1 0 10k
   c1 1 0 1p
 
@@ -225,4 +229,26 @@ Access with ~$x[0]~ or ~$x[2-len]~.
 
 #+RESULTS:
 :RESULTS:
+
+Circuit: *time constant measurement
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+
+Initial Transient Solution
+--------------------------
+
+Node                                   Voltage
+----                                   -------
+1                                            1
+
+
+
+No. of Data Rows : 108
+value_at_tau        =  3.679797e-01
+value_at_five_tau   =  6.717322e-03
+Error: file.txt: no such variable.
+Error: missing name for output.
+Error: file.txt: no such variable.
+Error: missing name for output.
 :END:
