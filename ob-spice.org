@@ -184,6 +184,12 @@ Access with ~$x[0]~ or ~$x[2-len]~.
 #+END_SRC
 ** ob-execute
 #+BEGIN_SRC emacs-lisp
+  (defun org-babel-spice-trim-body (body)
+    "Prepare BODY to be used in interactive ngspice session."
+    (replace-regexp-in-string
+     "^ *\\.\\(control\\|endc\\) *$" ""
+     (replace-regexp-in-string
+      "^ *\\*.*$" "" body)))
   (defun org-babel-execute:spice-exp (body params)
     "Execute a block of Spice code with Babel.
         This function is called by `org-babel-execute-src-block'."
@@ -198,9 +204,8 @@ Access with ~$x[0]~ or ~$x[2-len]~.
            (circuit-body (org-babel-spice-replace-vars
                           (substring body 0 break-index)
                           vars));vars need to be replaced as they don't work when using source
-           ;; todo: remove comments & .control .endc lines
            ;; todo: replace vars. :-( → set vars break when doing something like $file.txt
-           (control-body (substring body break-index))
+           (control-body (org-babel-spice-trim-body (substring body break-index)))
            (full-control-body (if control-body
                                   (org-babel-expand-body:generic
                                    control-body params
@@ -234,37 +239,37 @@ Access with ~$x[0]~ or ~$x[2-len]~.
         )
       result
       ))
-        (defun org-babel-spice-source (buffer file)
-          "Source FILE in ngspice process running in BUFFER and return results."
-          (let ((body (concat "source " file)))
-            (org-babel-spice-evaluate buffer body)))
-        (defun org-babel-spice-evaluate (buffer body)
-          "Pass BODY to ngspice process in BUFFER and return results."
-          (let ((eoe-string (format "echo \"%s\"" org-babel-spice-eoe-indicator)))
-            ;; Force session to be ready
-            ;;(org-babel-comint-with-output
-            ;;    (buffer org-babel-spice-eoe-indicator t eoe-string)
-            ;;  (insert eoe-string) (comint-send-input nil t))
-            ;; Eval body
-            (replace-regexp-in-string
-             "^ngspice [0-9]+ -> " ""
-             (mapconcat
-              #'identity
-              (butlast
-               (cdr
-                (split-string
-                 (mapconcat
-                  #'org-trim
-                  (org-babel-comint-with-output (buffer org-babel-spice-eoe-indicator t body)
-                    (mapcar (lambda (line)
-                              (insert (org-babel-chomp line)) (comint-send-input nil t))
-                            (list body
-                                  eoe-string
-                                  "\n")))
-                  "\n") "[\r\n]")) 2) "\n"))
-            ))
+  (defun org-babel-spice-source (buffer file)
+    "Source FILE in ngspice process running in BUFFER and return results."
+    (let ((body (concat "source " file)))
+      (org-babel-spice-evaluate buffer body)))
+  (defun org-babel-spice-evaluate (buffer body)
+    "Pass BODY to ngspice process in BUFFER and return results."
+    (let ((eoe-string (format "echo \"%s\"" org-babel-spice-eoe-indicator)))
+      ;; Force session to be ready
+      ;;(org-babel-comint-with-output
+      ;;    (buffer org-babel-spice-eoe-indicator t eoe-string)
+      ;;  (insert eoe-string) (comint-send-input nil t))
+      ;; Eval body
+      (replace-regexp-in-string
+       "^\\(ngspice [0-9]+ -> \\)*" ""
+       (mapconcat
+        #'identity
+        (butlast
+         (cdr
+          (split-string
+           (mapconcat
+            #'org-trim
+            (org-babel-comint-with-output (buffer org-babel-spice-eoe-indicator t body)
+              (mapcar (lambda (line)
+                        (insert (org-babel-chomp line)) (comint-send-input nil t))
+                      (list body
+                            eoe-string
+                            "\n")))
+            "\n") "[\r\n]")) 2) "\n"))
+      ))
 
-        (provide 'ob-spice-exp)
+  (provide 'ob-spice-exp)
         ;;; ob-spice.el ends here
 #+END_SRC
 
@@ -277,7 +282,7 @@ echo "Hello World"
 : Hello World
 
 
-#+BEGIN_SRC spice-exp :var file="/tmp/spice_test" :results drawer :session spicetest
+#+BEGIN_SRC spice-exp :var file="/tmp/spice_test"  :session spicetest 
   ,*Time Constant Measurement
   r1 1 0 10k
   c1 1 0 1p
@@ -300,8 +305,7 @@ echo "Hello World"
 #+END_SRC
 
 #+RESULTS:
-:RESULTS:
-ngspice 157 -> ngspice 157 -> .control: no such command available in ngspice
+#+begin_example
 Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
 
 
@@ -315,13 +319,10 @@ Node                                   Voltage
 
 
 No. of Data Rows : 108
-ngspice 160 -> v(1)*gnuplot: no such command available in ngspice
 value_at_tau        =  3.679797e-01
 value_at_five_tau   =  6.717322e-03
 Error: file.txt: no such variable.
 Error: missing name for output.
-*: no such command available in ngspice
 Error: file.txt: no such variable.
 Error: missing name for output.
-.endc: no such command available in ngspice
-:END:
+#+end_example
