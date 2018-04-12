@@ -294,12 +294,13 @@ Access with ~$x[0]~ or ~$x[2-len]~.
                             (format "echo \"%s\"" org-babel-spice-eoe-indicator)
                             )))
              (comint-send-input nil t))
-           (org-babel-eval-read-file tmp-file))
-         )
+           ;; split result to output multiple comma separated vars as table
+           (split-string (org-babel-eval-read-file tmp-file) ",")
+           ))
         ;;todo: add "smart" result type to display measurements (or echos?) & plot filenames
         )))
 
-        (provide 'ob-spice-exp)
+  (provide 'ob-spice-exp)
              ;;; ob-spice.el ends here
 #+END_SRC
 
@@ -330,12 +331,12 @@ echo "Hello World"
   meas tran value_at_five_tau find V(1) at=5e-8
   echo value_at_tau = "$&value_at_tau" > $file.txt
   ,* Any better way to write one value of vector to a file??
-  echo value_at_five_tau = "$&value_at_five_tau" 
+  echo $&value_at_tau ,$&value_at_five_tau
   .endc
 #+END_SRC
 
 #+RESULTS:
-: value_at_five_tau = 0.00671732
+| 0.36798 | 0.00671732 |
 
 #+BEGIN_SRC spice-exp :var file="/tmp/spice_test2" :session spicetest :results output
   ,*Virtual Ground Test: opamp gain = 1000
