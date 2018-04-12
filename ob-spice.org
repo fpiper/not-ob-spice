@@ -186,10 +186,15 @@ Access with ~$x[0]~ or ~$x[2-len]~.
 #+BEGIN_SRC emacs-lisp
   (defun org-babel-spice-trim-body (body)
     "Prepare BODY to be used in interactive ngspice session."
+    ;; random control codes after $var inserts
     (replace-regexp-in-string
-     "^ *\\.\\(control\\|endc\\) *$" ""
+     "" " "
+     ;; .control .endc lines
      (replace-regexp-in-string
-      "^ *\\*.*$" "" body)))
+      "^ *\\.\\(control\\|endc\\) *$" ""
+      ;; comment lines
+      (replace-regexp-in-string
+       "^ *\\*.*$" "" body))))
   (defun org-babel-execute:spice-exp (body params)
     "Execute a block of Spice code with Babel.
         This function is called by `org-babel-execute-src-block'."
@@ -201,10 +206,12 @@ Access with ~$x[0]~ or ~$x[2-len]~.
            (no-source (cdr (assq :no-source params)))
            (break-index (if (string-match "^ *\.end *$" body)
                             (match-end 0) 0))
+           ;;todo: add prologue
            (circuit-body (org-babel-spice-replace-vars
                           (substring body 0 break-index)
                           vars));vars need to be replaced as they don't work when using source
            ;; todo: replace vars. :-( → set vars break when doing something like $file.txt
+           ;; todo: add only epilogue, not prologue
            (control-body (org-babel-spice-trim-body (substring body break-index)))
            (full-control-body (if control-body
                                   (org-babel-expand-body:generic
@@ -325,4 +332,46 @@ Error: file.txt: no such variable.
 Error: missing name for output.
 Error: file.txt: no such variable.
 Error: missing name for output.
+#+end_example
+
+#+BEGIN_SRC spice-exp :var file="/tmp/spice_test2" :session spicetest
+  ,*Virtual Ground Test: opamp gain = 1000
+  vin in 0 dc 0V sin(0 .1 100Hz)
+  r1 in inn 10k
+  r2 inn out 10k
+  EOpamp out 0 0 inn 1000
+  .tran 0.1ms 0.05s
+  .print tran v(in)
+  .meas tran vtest find v(in) at=0.04e-3
+  .end
+  .control
+  run
+  set gnuplot_terminal=png
+  gnuplot $file v(in) v(out) v(inn)
+  .endc
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+
+Initial Transient Solution
+--------------------------
+
+Node                                   Voltage
+----                                   -------
+in                                           0
+inn                                          0
+out                                          0
+eopamp#branch                                0
+vin#branch                                   0
+
+
+
+No. of Data Rows : 508
+
+Measurements for Transient Analysis
+
+vtest               =  2.512902e-03
 #+end_example
