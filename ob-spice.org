@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:emacs-lisp :tangle ob-spice-exp.el :results silent
+#+PROPERTY: header-args:emacs-lisp :tangle ob-spice.el :results silent
 * License
 #+BEGIN_SRC emacs-lisp
   ;;; ob-spice.el --- Babel Functions for spice
@@ -169,7 +169,7 @@ Access with ~$x[0]~ or ~$x[2-len]~.
                           body)))
             vars)
       body))
-  (defun org-babel-expand-body:spice-exp (body params)
+  (defun org-babel-expand-body:spice (body params)
     "Expand BODY according to PARAMS, return the expanded body."
     (let ((vars (org-babel--get-vars params))
           (prologue (cdr (assq :prologue params)))
@@ -197,10 +197,10 @@ Access with ~$x[0]~ or ~$x[2-len]~.
       ;; comment lines
       (replace-regexp-in-string
        "^ *\\*.*$" "" body))))
-  (defun org-babel-execute:spice-exp (body params)
+  (defun org-babel-execute:spice (body params)
     "Execute a block of Spice code with Babel.
   This function is called by `org-babel-execute-src-block'."
-    (let* (;(body (org-babel-expand-body:spice-exp body params))
+    (let* (;(body (org-babel-expand-body:spice body params))
            (gnuplot (cdr (assq :gnuplot params)))
            (result-params (cdr (assq :result-params params)))
            (result-type (cdr (assq :result-type params)))
@@ -302,12 +302,12 @@ Access with ~$x[0]~ or ~$x[2-len]~.
         ;;todo: add "smart" result type to display measurements (or echos?) & plot filenames
         )))
 
-  (provide 'ob-spice-exp)
+  (provide 'ob-spice)
              ;;; ob-spice.el ends here
 #+END_SRC
 
 * Tests
-#+BEGIN_SRC spice-exp :var x="4" :session spicetest :no-source yes
+#+BEGIN_SRC spice :var x="4" :session spicetest :no-source yes
 echo "Hello World"
 #+END_SRC
 
@@ -315,7 +315,7 @@ echo "Hello World"
 : Hello World
 
 
-#+BEGIN_SRC spice-exp :var file="/tmp/spice_test"  :session spicetest :results value
+#+BEGIN_SRC spice :var file="/tmp/spice_test"  :session spicetest :results value
   ,*Time Constant Measurement
   r1 1 0 10k
   c1 1 0 1p
@@ -340,7 +340,7 @@ echo "Hello World"
 #+RESULTS:
 | 0.36798 | 0.00671732 |
 
-#+BEGIN_SRC spice-exp :var file="/tmp/spice_test2" :session spicetest :results output
+#+BEGIN_SRC spice :var file="/tmp/spice_test2" :session spicetest :results output
   ,*Virtual Ground Test: opamp gain = 1000
   vin in 0 dc 0V sin(0 .1 100Hz)
   r1 in inn 10k
