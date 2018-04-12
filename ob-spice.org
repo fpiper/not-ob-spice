@@ -39,7 +39,7 @@
 - option to return content of generated gnuplot .plt for easy use with
   :post {generic gnuplot block}
   - Full .plt or just data points?
-** [0/4] Flags
+** [0/5] Flags
 *** NEXT [#C] :netlist
 Name of src block to include for netlist
 *** NEXT [#B] :dir
@@ -48,6 +48,8 @@ working directory to start ngspice in
 default filename to use for 
 *** NEXT :gnuplot
 name of gnuplot block or .plt file to prepend to each plot
+*** NEXT :batch / :no-interactive
+use batch mode
 ** DONE Variable replacement in spice body
 ** INPROGRESS Execution using ngspice
 *** NEXT Steps to using interactive mode
@@ -198,7 +200,7 @@ Access with ~$x[0]~ or ~$x[2-len]~.
   (defun org-babel-execute:spice-exp (body params)
     "Execute a block of Spice code with Babel.
   This function is called by `org-babel-execute-src-block'."
-    (let* ((body (org-babel-expand-body:spice-exp body params))
+    (let* (;(body (org-babel-expand-body:spice-exp body params))
            (gnuplot (cdr (assq :gnuplot params)))
            (result-params (cdr (assq :result-params params)))
            (result-type (cdr (assq :result-type params)))
