@@ -39,10 +39,10 @@
 - option to return content of generated gnuplot .plt for easy use with
   :post {generic gnuplot block}
   - Full .plt or just data points?
-** [0/5] Flags
+** [1/5] Flags
 *** NEXT [#C] :netlist
 Name of src block to include for netlist
-*** NEXT [#B] :dir
+*** DONE [#B] :dir
 working directory to start ngspice in
 *** NEXT [#B] :file?
 default filename to use for 
@@ -77,14 +77,20 @@ use batch mode
 #+BEGIN_SRC emacs-lisp
   (defvar org-babel-spice-command "ngspice"
     "Name of command to use for executing ngspice.")
-  (defun org-babel-spice-initiate-session (&optional session _params)
+  (defun org-babel-spice-initiate-session (&optional session dir _params)
     "Initiate a ngspice session.
-  Create comint buffer SESSION running ngspice."
-      ;; set default-directory to start process in other than current dir
-      (make-comint sessionname org-babel-spice-command)))
-
+  Create comint buffer SESSION running ngspice starting in
+  default-directory or DIR if specified."
     (let* ((sessionname (if (or (not session) (string= session "none"))
                             "spice" session))
+           (session (make-comint sessionname org-babel-spice-command)))
+      (if (and dir (string-match "^/" dir))
+          ;; absolute dir
+          (comint-simple-send session (format "cd %s" dir))
+        ;; relative dir
+        (comint-simple-send session (format "cd %s%s" default-directory (or dir ""))))
+      session
+      ))
   (defun org-babel-prep-session:spice (session params)
     "Prepare SESSION according to header arguments in PARAMS."
     (let ((session (org-babel-spice-initiate-session session))
@@ -207,7 +213,8 @@ Access with ~$x[0]~ or ~$x[2-len]~.
            (result-params (cdr (assq :result-params params)))
            (result-type (cdr (assq :result-type params)))
            (session (org-babel-spice-initiate-session
-                     (cdr (assq :session params))))
+                     (cdr (assq :session params))
+                     (cdr (assq :dir params))))
            (vars (org-babel--get-vars params))
            (no-source (cdr (assq :no-source params)))
            (break-index (if (string-match "^ *\.end *$" body)
