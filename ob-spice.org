@@ -350,8 +350,7 @@ Access with ~$x[0]~ or ~$x[2-len]~.
 
       ;; TODO gnuplot options
       (if (string= "yes" gnuplot)
-          nil ;return content(!) of gnuplot.plt for :post processing or
-                                          ;nowebbing spice into gnuplot
+          nil ;return content(!) of gnuplot.plt for :post processing with gnuplot block?
         nil ;return normal spice output
         )
       result
@@ -402,13 +401,16 @@ Access with ~$x[0]~ or ~$x[2-len]~.
                             )))
              (comint-send-input nil t))
            ;; split result to output multiple comma separated vars as table
-           (split-string (org-babel-eval-read-file tmp-file) ",")
-           ))
+           (let ((result (split-string (org-babel-chomp (org-babel-eval-read-file tmp-file)) ",")))
+             (if (cdr result)
+                 result
+               (car result))
+             )))
         ;;todo: add "smart" result type to display measurements (or echos?) & plot filenames
         )))
 
   (provide 'ob-spice)
-             ;;; ob-spice.el ends here
+  ;;; ob-spice.el ends here
 #+END_SRC
 
 * Tests
