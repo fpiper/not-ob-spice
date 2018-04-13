@@ -47,7 +47,8 @@ working directory to start ngspice in
 *** NEXT [#B] :file?
 default filename to use for 
 *** NEXT :gnuplot
-name of gnuplot block or .plt file to prepend to each plot
+name of gnuplot block or .plt file to handle plotting instead of
+gnuplot lines
 *** NEXT :batch / :no-interactive
 use batch mode
 ** DONE Variable replacement in spice body
