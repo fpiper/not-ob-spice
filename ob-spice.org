@@ -80,10 +80,11 @@ use batch mode
   (defun org-babel-spice-initiate-session (&optional session _params)
     "Initiate a ngspice session.
   Create comint buffer SESSION running ngspice."
-    (let ((sessionname (or session "spice")))
       ;; set default-directory to start process in other than current dir
       (make-comint sessionname org-babel-spice-command)))
 
+    (let* ((sessionname (if (or (not session) (string= session "none"))
+                            "spice" session))
   (defun org-babel-prep-session:spice (session params)
     "Prepare SESSION according to header arguments in PARAMS."
     (let ((session (org-babel-spice-initiate-session session))
