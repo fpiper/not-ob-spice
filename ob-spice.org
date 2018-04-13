@@ -174,8 +174,7 @@ Access with ~$x[0]~ or ~$x[2-len]~.
     (let ((vars (org-babel--get-vars params))
           (prologue (cdr (assq :prologue params)))
           (epilogue (cdr (assq :epilogue params)))
-          (file (cdr (assq :file params)))
-          (old-body ""))
+          (file (cdr (assq :file params))))
       (setq body (org-babel-spice-replace-vars body vars))
       ;; TODO :file stuff ....
 
@@ -210,16 +209,16 @@ Access with ~$x[0]~ or ~$x[2-len]~.
            (no-source (cdr (assq :no-source params)))
            (break-index (if (string-match "^ *\.end *$" body)
                             (match-end 0) 0))
-           ;;todo: add prologue
-           (circuit-body (org-babel-spice-replace-vars
+           ;;vars need to be replaced as they don't work when using source
+           (circuit-body (org-babel-expand-body:spice
                           (substring body 0 break-index)
-                          vars));vars need to be replaced as they don't work when using source
+                          (assq-delete-all :epilogue (copy-alist params))))
            ;; todo: replace vars. :-( → set vars break when doing something like $file.txt
-           ;; todo: add only epilogue, not prologue
            (control-body (org-babel-spice-trim-body (substring body break-index)))
            (full-control-body (if control-body
                                   (org-babel-expand-body:generic
-                                   control-body params
+                                   control-body
+                                   (assq-delete-all :prologue (copy-alist params))
                                    (org-babel-variable-assignments:spice params))))
            (circuit-file (if circuit-body (org-babel-temp-file "spice-body-" ".cir")))
            (result))
