@@ -39,16 +39,113 @@
 - option to return content of generated gnuplot .plt for easy use with
   :post {generic gnuplot block}
   - Full .plt or just data points?
-** [1/5] Flags
-*** NEXT [#C] :netlist
+** Use cases
+*** NEXT just load some circuit
+#+BEGIN_SRC spice :results output
+,* RC
+r1 1 0 10k
+c1 1 0 1p
+.IC V(1)=1
+.tran 1n 0.1u
+.end
+#+END_SRC
+
+#+RESULTS:
+
+*** DONE execute some stuff
+#+BEGIN_SRC spice
+echo "Hello world"
+#+END_SRC
+#+RESULTS:
+: Hello world
+
+#+BEGIN_SRC spice
+echo "0,1,2,3"
+#+END_SRC
+#+RESULTS:
+| 0 | 1 | 2 | 3 |
+
+*** NEXT plot some voltages and return png
+#+BEGIN_SRC spice :var file="/tmp/xzy" :results file
+,*RC circuit
+r1 1 0 10k
+c1 1 0 1p
+
+.IC V(1)=1
+.tran 1n 0.1u
+.end
+
+.control
+run
+set gnuplot_terminal=png
+gnuplot $file v(1)
+,* can't even use $file.png here
+echo /tmp/xzy.png
+.endc
+#+END_SRC
+
+#+RESULTS:
+[[file:/tmp/xzy.png]]
+
+*** DONE do measurements and return results
+#+BEGIN_SRC spice :session spicetest :results value
+,*Time Constant Measurement
+r1 1 0 10k
+c1 1 0 1p
+
+.IC V(1)=1
+.tran 1n 0.1u
+.print tran v(1)
+.end
+
+.control
+run
+meas tran value_at_tau find V(1) at=1e-8
+meas tran value_at_five_tau find V(1) at=5e-8
+echo $&value_at_tau ,$&value_at_five_tau
+.endc
+#+END_SRC
+
+#+RESULTS:
+| 0.36798 | 0.00671732 |
+
+*** NEXT write simulation data to file and return file name(s?)
+#+BEGIN_SRC spice :var file="/tmp/xyz" :post plot_stuff(data=*this*) :results file
+,*RC circuit
+r1 1 0 10k
+c1 1 0 1p
+.IC V(1)=1
+.tran 1n 0.1u
+.end
+.control
+run
+wrdata $file v(1)
+,* make this line not neccessary:
+echo $file
+.endc
+#+END_SRC
+
+#+RESULTS:
+[[file:/tmp/xyz_plot.png]]
+
+#+NAME: plot_stuff
+#+BEGIN_SRC gnuplot :var data="x" :file "/tmp/xyz_plot.png" :results silent
+plot data u 1:2 w l ls 1
+#+END_SRC
+
+** [1/6] Flags
+*** NEXT [#C] :netlist / :circuit
 Name of src block to include for netlist
 *** DONE [#B] :dir
 working directory to start ngspice in
 *** NEXT [#B] :file?
 default filename to use for 
 *** NEXT :gnuplot
-name of gnuplot block or .plt file to handle plotting instead of
-gnuplot lines
+name of gnuplot block or .plt file: handle plotting instead of gnuplot
+lines
+*** NEXT :output
+**** `smart
+display measurements (or echos?) & plot filenames
 *** NEXT :batch / :no-interactive
 use batch mode
 ** DONE Variable replacement in spice body
