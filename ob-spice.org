@@ -51,7 +51,7 @@
   :post {generic gnuplot block}
   - Full .plt or just data points?
 ** Use cases
-*** NEXT just load some circuit
+*** DONE just load some circuit
 #+BEGIN_SRC spice :results output
 ,* RC
 r1 1 0 10k
@@ -62,6 +62,7 @@ c1 1 0 1p
 #+END_SRC
 
 #+RESULTS:
+: Circuit: * rc
 
 *** DONE execute some stuff
 #+BEGIN_SRC spice
@@ -195,7 +196,9 @@ c1 1 0 1p
 .IC V(1)=1
 .tran 1n 0.1u
 .end
-,#+END_SRC#+RESULTS:
+,#+END_SRC
+,#+RESULTS:
+: Circuit: * rc
 
 ,*** Execute some stuff
 ,#+BEGIN_SRC spice
@@ -468,10 +471,9 @@ This function is called by `org-babel-execute-src-block'."
 
     ;; Source circuit-body
     (with-temp-file circuit-file (insert circuit-body))
-    (org-babel-spice-source session circuit-file)
-    ;; Run control-body
-    (setq result (org-babel-spice-evaluate session full-control-body result-type result-params))
-
+    ;; Evaluate
+    (setq result (org-babel-spice-evaluate session full-control-body
+					   result-type circuit-file result-params))
 
     ;; TODO deal with temporary files
 
@@ -492,11 +494,13 @@ This function is called by `org-babel-execute-src-block'."
   "Source FILE in ngspice process running in BUFFER and return results."
   (let ((body (concat "source " file)))
     (org-babel-spice-evaluate buffer body 'value)))
-(defun org-babel-spice-evaluate (buffer body result-type &optional result-params)
+(defun org-babel-spice-evaluate (buffer body result-type &optional file result-params)
   "Use BUFFER running ngspice process to eval BODY and return results.
-     If RESULT-TYPE equals `output' return all outputs, if it equals
-     `value' return only value of last statement."
-  (let ((eoe-string (format "echo \"%s\"" org-babel-spice-eoe-indicator)))
+If RESULT-TYPE equals `output' return all outputs, if it equals
+`value' return only value of last statement.  FILE can refer to a
+spice input file that is sourced before BODY execution is started."
+  (let ((eoe-string (format "echo \"%s\"" org-babel-spice-eoe-indicator))
+	(eval-body (concat "source " file "\n" body)))
     (pcase result-type
       (`output
        ;; Force session to be ready
@@ -504,41 +508,44 @@ This function is called by `org-babel-execute-src-block'."
        ;;    (buffer org-babel-spice-eoe-indicator t eoe-string)
        ;;  (insert eoe-string) (comint-send-input nil t))
        ;; Eval body
-       (replace-regexp-in-string
-        "^\\(ngspice [0-9]+ -> \\)*" ""
-        (mapconcat
-         #'identity
-         (butlast
-          (cdr
-           (split-string
-            (mapconcat
-             #'org-trim
-             (org-babel-comint-with-output (buffer org-babel-spice-eoe-indicator t body)
-               (mapcar (lambda (line)
-                         (insert (org-babel-chomp line)) (comint-send-input nil t))
-                       (list body
-                             eoe-string
-                             "\n")))
-             "\n") "[\r\n]")) 2) "\n"))
+       (org-babel-chomp
+	(replace-regexp-in-string
+	 "^Current directory: .*\n" ""
+	 (replace-regexp-in-string
+	  "^\\(ngspice [0-9]+ -> *\n*\\)*" ""
+	  (mapconcat
+	   #'identity
+	   (butlast
+	    (cdr
+	     (split-string
+	      (mapconcat
+	       #'org-trim
+	       (org-babel-comint-with-output (buffer org-babel-spice-eoe-indicator t eval-body)
+		 (mapcar (lambda (line)
+			   (insert (org-babel-chomp line)) (comint-send-input nil t))
+			 (list eval-body
+			       eoe-string
+			       "\n")))
+	       "\n") "[\r\n]")) 2) "\n"))))
        )
       (`value
        (let ((tmp-file (org-babel-temp-file "spice-")))
-         (org-babel-comint-with-output
-             (buffer org-babel-spice-eoe-indicator t body)
-           (mapcar
-            (lambda (line)
-              (insert (org-babel-chomp line)) (comint-send-input nil t))
-            (append (list body)
-                    (list (format "!! > %s" tmp-file)
-                          (format "echo \"%s\"" org-babel-spice-eoe-indicator)
-                          )))
-           (comint-send-input nil t))
-         ;; split result to output multiple comma separated vars as table
-         (let ((result (split-string (org-babel-chomp (org-babel-eval-read-file tmp-file)) ",")))
-           (if (cdr result)
-               result
-             (car result))
-           )))
+	 (org-babel-comint-with-output
+	     (buffer org-babel-spice-eoe-indicator t eval-body)
+	   (mapcar
+	    (lambda (line)
+	      (insert (org-babel-chomp line)) (comint-send-input nil t))
+	    (append (list eval-body)
+		    (list (format "!! > %s" tmp-file)
+			  (format "echo \"%s\"" org-babel-spice-eoe-indicator)
+			  )))
+	   (comint-send-input nil t))
+	 ;; split result to output multiple comma separated vars as table
+	 (let ((result (split-string (org-babel-chomp (org-babel-eval-read-file tmp-file)) ",")))
+	   (if (cdr result)
+	       result
+	     (car result))
+	   )))
       ;;todo: add "smart" result type to display measurements (or echos?) & plot filenames
       )))
 
@@ -599,6 +606,8 @@ gnuplot $file v(in) v(out) v(inn)
 
 #+RESULTS:
 #+begin_example
+Circuit: *virtual ground test: opamp gain = 1000
+
 Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
 
 
