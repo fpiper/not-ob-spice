@@ -1,4 +1,5 @@
 #+PROPERTY: header-args:emacs-lisp :tangle ob-spice.el :results silent
+#+PROPERTY: header-args:org :tangle readme.org :results silent
 * License
 #+BEGIN_SRC emacs-lisp
   ;;; ob-spice.el --- Babel Functions for spice
@@ -170,6 +171,128 @@ use batch mode
   (make-comint "spice" "ngspice")
 #+END_SRC
 ** PLANNING (Auto-)Plotting
+* Readme.org
+#+BEGIN_SRC org
+,* Overview
+
+Extends org-babel capabilities to support spice simulations using
+ngspice. Simulations are executed using an interactive ngspice process
+running in emacs. The running ngspice process can be used to
+manipulate the simulation results directly or spread a simulation into
+multiple src blocks.
+
+Spice source blocks are interpreted as circuit descriptions until an
+'.end' line is encountered. After that a control part may follow
+(surrounded by '.control' and '.endc' lines). *If there is no '.end'*
+,*line all of the src block is interpreted as a control block!*
+
+,* Use cases
+,*** Just load some circuit for later simulation:
+,#+BEGIN_SRC spice :results output
+,,* RC
+r1 1 0 10k
+c1 1 0 1p
+.IC V(1)=1
+.tran 1n 0.1u
+.end
+,#+END_SRC#+RESULTS:
+
+,*** Execute some stuff
+,#+BEGIN_SRC spice
+echo "Hello world"
+,#+END_SRC
+,#+RESULTS:
+: Hello world
+
+,#+BEGIN_SRC spice
+echo "0,1,2,3"
+,#+END_SRC
+,#+RESULTS:
+| 0 | 1 | 2 | 3 |
+
+,*** Plot some voltages and return png
+,#+BEGIN_SRC spice :var file="/tmp/xzy" :results file
+,,*RC circuit
+r1 1 0 10k
+c1 1 0 1p
+
+.IC V(1)=1
+.tran 1n 0.1u
+.end
+
+.control
+run
+set gnuplot_terminal=png
+gnuplot $file v(1)
+echo /tmp/xzy.png
+.endc
+,#+END_SRC
+
+,#+RESULTS:
+[[file:/tmp/xzy.png]]
+
+,*** Do measurements and return results
+,#+BEGIN_SRC spice :session spicetest :results value
+,,*Time Constant Measurement
+r1 1 0 10k
+c1 1 0 1p
+
+.IC V(1)=1
+.tran 1n 0.1u
+.print tran v(1)
+.end
+
+.control
+run
+meas tran value_at_tau find V(1) at=1e-8
+meas tran value_at_five_tau find V(1) at=5e-8
+echo $&value_at_tau ,$&value_at_five_tau
+.endc
+,#+END_SRC
+
+,#+RESULTS:
+| 0.36798 | 0.00671732 |
+
+,*** write simulation data to file and return file name
+,#+BEGIN_SRC spice :var file="/tmp/xyz" :post plot_stuff(data=*this*) :results file
+,,*RC circuit
+r1 1 0 10k
+c1 1 0 1p
+.IC V(1)=1
+.tran 1n 0.1u
+.end
+.control
+run
+wrdata $file v(1)
+echo $file
+.endc
+,#+END_SRC
+
+,#+RESULTS:
+[[file:/tmp/xyz_plot.png]]
+
+,#+NAME: plot_stuff
+,#+BEGIN_SRC gnuplot :var data="x" :file "/tmp/xyz_plot.png" :results silent
+plot data u 1:2 w l ls 1
+,#+END_SRC
+
+,* Flags
+,** :netlist / :circuit
+Name of a src block to include for netlist/circuit descriptions.
+,** :dir
+Working directory to run the src block in. Default is the value of `default-directory'.
+,** :file?
+
+,** :gnuplot
+Name of gnuplot block or .plt file: handle plotting instead of gnuplot
+lines
+,** :results
+Available result options are `value' which returns the output of the
+ last expression, `output' which returns all output and `smart' which
+ tries to only display echos and plot filenames.
+,** :batch / :no-interactive
+use batch mode
+#+END_SRC
 * Code
 
 #+BEGIN_SRC emacs-lisp :tangle no
