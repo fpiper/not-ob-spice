@@ -77,7 +77,8 @@ echo "0,1,2,3"
 #+RESULTS:
 | 0 | 1 | 2 | 3 |
 
-*** NEXT plot some voltages and return png
+
+*** DONE plot some voltages and return png
 #+BEGIN_SRC spice :var file="/tmp/xzy" :results file
 ,*RC circuit
 r1 1 0 10k
@@ -91,11 +92,8 @@ c1 1 0 1p
 run
 set gnuplot_terminal=png
 gnuplot $file v(1)
-,* can't even use $file.png here
-echo /tmp/xzy.png
 .endc
 #+END_SRC
-
 #+RESULTS:
 [[file:/tmp/xzy.png]]
 
@@ -117,12 +115,11 @@ meas tran value_at_five_tau find V(1) at=5e-8
 echo $&value_at_tau ,$&value_at_five_tau
 .endc
 #+END_SRC
-
 #+RESULTS:
 | 0.36798 | 0.00671732 |
 
-*** NEXT write simulation data to file and return file name(s?)
-#+BEGIN_SRC spice :var file="/tmp/xyz" :post plot_stuff(data=*this*) :results file
+*** DONE write simulation data to file and return file name(s?)
+#+BEGIN_SRC spice :var file="/tmp/xyz" :results file :post plot_stuff(data=*this*)
 ,*RC circuit
 r1 1 0 10k
 c1 1 0 1p
@@ -132,16 +129,14 @@ c1 1 0 1p
 .control
 run
 wrdata $file v(1)
-,* make this line not neccessary:
-echo $file
 .endc
-#+END_SRC
-
+#+END_SRC 
 #+RESULTS:
 [[file:/tmp/xyz_plot.png]]
 
 #+NAME: plot_stuff
 #+BEGIN_SRC gnuplot :var data="x" :file "/tmp/xyz_plot.png" :results silent
+load '~/.gnuplot_settings.plt'
 plot data u 1:2 w l ls 1
 #+END_SRC
 
@@ -227,7 +222,6 @@ c1 1 0 1p
 run
 set gnuplot_terminal=png
 gnuplot $file v(1)
-echo /tmp/xzy.png
 .endc
 ,#+END_SRC
 
@@ -267,7 +261,6 @@ c1 1 0 1p
 .control
 run
 wrdata $file v(1)
-echo $file
 .endc
 ,#+END_SRC
 
@@ -536,20 +529,36 @@ spice input file that is sourced before BODY execution is started."
 	    (lambda (line)
 	      (insert (org-babel-chomp line)) (comint-send-input nil t))
 	    (append (list eval-body)
-		    (list (format "!! > %s" tmp-file)
+		    (list (format "echo !! > %s" tmp-file)
 			  (format "echo \"%s\"" org-babel-spice-eoe-indicator)
 			  )))
 	   (comint-send-input nil t))
 	 ;; split result to output multiple comma separated vars as table
-	 (let ((result (split-string (org-babel-chomp (org-babel-eval-read-file tmp-file)) ",")))
-	   (if (cdr result)
+	 (let ((result (org-babel-spice-cleanup-result
+			(org-babel-chomp
+			 (org-babel-eval-read-file tmp-file)))))
+	   (if (or (not (listp result)) (cdr result))
 	       result
 	     (car result))
 	   )))
       ;;todo: add "smart" result type to display measurements (or echos?) & plot filenames
       )))
+(defun org-babel-spice-cleanup-result (result)
+  "Cleanup value to return instead of RESULT.
+Commands that write to files return the filename."
+  (let* ((index (if (string-match "^ *[^ ]*" result)
+		    (match-end 0) 0))
+	 (type (substring result 0 index))
+	 (arg (replace-regexp-in-string "^ *[^ ]* \\([^ ]*\\).*" "\\1" result)))
+    (message type)
+    (message arg)
+    (pcase type
+      ((or "wrdata" "write") arg)
+      ("gnuplot" (format "%s.png" arg))
+      ("echo" (split-string (substring result (+ index 1)) ","))
+      (_ result))))
 
-(provide 'ob-spice)
+      (provide 'ob-spice)
 ;;; ob-spice.el ends here
 #+END_SRC
 
@@ -587,7 +596,7 @@ echo $&value_at_tau ,$&value_at_five_tau
 #+RESULTS:
 | 0.36798 | 0.00671732 |
 
-#+BEGIN_SRC spice :var file="/tmp/spice_test2" :session spicetest :results output
+#+BEGIN_SRC spice :var file="/tmp/spice_test2" :session spicetest :results file
 ,*Virtual Ground Test: opamp gain = 1000
 vin in 0 dc 0V sin(0 .1 100Hz)
 r1 in inn 10k
@@ -605,28 +614,4 @@ gnuplot $file v(in) v(out) v(inn)
 #+END_SRC
 
 #+RESULTS:
-#+begin_example
-Circuit: *virtual ground test: opamp gain = 1000
-
-Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
-
-
-Initial Transient Solution
---------------------------
-
-Node                                   Voltage
-----                                   -------
-in                                           0
-inn                                          0
-out                                          0
-eopamp#branch                                0
-vin#branch                                   0
-
-
-
-No. of Data Rows : 508
-
-Measurements for Transient Analysis
-
-vtest               =  2.512902e-03
-#+end_example
+[[file:/tmp/spice_test2]]
