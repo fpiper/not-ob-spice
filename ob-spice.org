@@ -31,6 +31,16 @@
 
   (require 'ob)
 #+END_SRC
+* Auto-tangle
+#+BEGIN_SRC emacs-lisp :tangle no
+(defun my/tangle-ob-spice ()
+  "If the current file is '~/.emacs.d/lisp/ob-spice/ob-spice.org', the code blocks are tangled"
+  (when (equal buffer-file-name (concat (getenv "HOME") "/.emacs.d/lisp/ob-spice/ob-spice.org"))
+    (org-babel-tangle)
+    (message "%s tangled" buffer-file-name)))
+
+(add-hook 'after-save-hook #'my/tangle-ob-spice)
+#+END_SRC
 * Functionality
 
 - Temporary files in working directory are accepted (as they are
