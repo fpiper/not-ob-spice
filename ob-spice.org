@@ -314,13 +314,13 @@ default-directory or DIR if specified."
   (let* ((sessionname (if (or (not session) (string= session "none"))
                           "spice" session))
          (session (make-comint sessionname org-babel-spice-command)))
-    (if (and dir (string-match "^/" dir))
-        ;; absolute dir
-        (comint-simple-send session (format "cd %s" dir))
+    (if (and dir (file-name-absolute-p dir))
+	;; absolute dir
+	(comint-simple-send session (format "cd %s" dir))
       ;; relative dir
-      (comint-simple-send session (format "cd %s%s" default-directory (or dir ""))))
+      (comint-simple-send session (format "cd %s" default-directory))
     session
-    ))
+    )))
 (defun org-babel-prep-session:spice (session params)
   "Prepare SESSION according to header arguments in PARAMS."
   (let ((session (org-babel-spice-initiate-session session))
