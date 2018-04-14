@@ -450,11 +450,11 @@ This function is called by `org-babel-execute-src-block'."
                         (assq-delete-all :epilogue (copy-alist params))))
          ;; todo: replace vars. :-( → set vars break when doing something like $file.txt
          (control-body (org-babel-spice-trim-body (substring body break-index)))
-         (full-control-body (if control-body
-                                (org-babel-expand-body:generic
-                                 control-body
-                                 (assq-delete-all :prologue (copy-alist params))
-                                 (org-babel-variable-assignments:spice params))))
+         (full-control-body (if (not (string= control-body ""))
+				(org-babel-expand-body:generic
+				 control-body
+				 (assq-delete-all :prologue (copy-alist params))
+				 (org-babel-variable-assignments:spice params)) ""))
          (circuit-file (if circuit-body (org-babel-temp-file "spice-body-" ".cir")))
          (result))
 
@@ -493,7 +493,7 @@ If RESULT-TYPE equals `output' return all outputs, if it equals
 `value' return only value of last statement.  FILE can refer to a
 spice input file that is sourced before BODY execution is started."
   (let ((eoe-string (format "echo \"%s\"" org-babel-spice-eoe-indicator))
-	(eval-body (concat "source " file "\n" body)))
+	(eval-body (if file (concat "source " file "\n" body) "")))
     (pcase result-type
       (`output
        ;; Force session to be ready
