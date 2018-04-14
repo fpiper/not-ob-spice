@@ -615,3 +615,57 @@ gnuplot $file v(in) v(out) v(inn)
 
 #+RESULTS:
 [[file:/tmp/spice_test2]]
+
+** advanced example
+#+NAME: dim1_params
+#+BEGIN_SRC ruby :exports none
+[7.3260073260073255e-06,1.3215597400496679e-05,5.411787135503391e-06,2.344322344322345e-05,2.4e-06, 100.0]
+#+END_SRC
+#+RESULTS: dim1_params
+| 7.3260073260073255e-06 | 1.3215597400496679e-05 | 5.411787135503391e-06 | 2.344322344322345e-05 | 2.4e-06 | 100.0 |
+
+#+NAME: dim1_plot
+#+BEGIN_SRC gnuplot :var data="x" :file /tmp/ignored.png :results silent :exports none
+ set terminal pngcairo size 640,300 enhanced
+ set format y "%.0s%cV"
+ set format x "%.0s%cs"
+ set xrange [190e-9:260e-9]
+ set ytics 5e-3
+ set xlabel "t"
+ plot data using 1:2 w l ls 2 t "V_{out}"
+#+END_SRC
+
+#+BEGIN_SRC spice :session test :var dim=dim1_params :results output
+,* DAC.asc
+.model NMOS NMOS
+.model PMOS PMOS
+.lib /home/fred/spice/library/ngspice/CM5/CM5-N.phy CM5
+M1 0 VDD N005 N005 MP7 l= $dim[5] w= $dim[4]
+M2 VOUT VCTRL N005 N005 MP7 l= $dim[5] w= $dim[4]
+M4 N003 N002 VDD VDD MP7 l= $dim[3] w= $dim[2]
+M3 N002 N002 VDD VDD MP7 l= $dim[3] w= $dim[2]
+M5 N005 N004 N003 N003 MP7 l= $dim[3] w= $dim[2]
+M6 N004 N004 N002 N002 MP7 l= $dim[3] w= $dim[2]
+RL VOUT 0 $dim[6]
+CL VOUT 0 10p
+VDD VDD 0 5
+IREF N004 0 7.3u
+V1 VBIAS 0 2.5
+V2 VCTRL 0 PULSE(0 5 0 1n 1n 200n 420n)
+VM VDD N001 0
+.tran 1n 300n 190n
+.end
+#+END_SRC
+
+#+RESULTS:
+: Circuit: * dac.asc
+
+#+NAME: dim1
+#+BEGIN_SRC spice :session test :var file="/tmp/dim1" dim=dim1_params :post dim1_plot[:file /tmp/dim1.png](data=*this*) :results file
+save all
+run
+wrdata $file v(vout)
+#+END_SRC
+
+#+RESULTS: dim1
+[[file:/tmp/dim1.png]]
