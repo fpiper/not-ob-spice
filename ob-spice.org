@@ -371,7 +371,7 @@ Access with ~$x[0]~ or ~$x[2-len]~.
                             body)
               (let ((replacement (nth
                                   (string-to-number (match-string 1 body))
-                                  (cadr pair))))
+                                  pair)))
                 (setq body(format "%s%s%s"
                                   (substring body 0 (match-beginning
                                                      0))
