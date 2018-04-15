@@ -81,7 +81,7 @@ echo $&value_at_tau ,$&value_at_five_tau
 | 0.36798 | 0.00671732 |
 
 ** Write simulation data to file and return file name
-#+BEGIN_SRC spice :var file="/tmp/xyz" :post plot_stuff(data=*this*) :results file
+#+BEGIN_SRC spice :var file="/tmp/xyz" :post plot_stuff[:file /tmp/xyz.png](data=*this*) :results file
 ,*RC circuit
 r1 1 0 10k
 c1 1 0 1p
@@ -95,10 +95,10 @@ wrdata $file v(1)
 #+END_SRC
 
 #+RESULTS:
-[[file:/tmp/xyz_plot.png]]
+[[file:/tmp/xyz.png]]
 
 #+NAME: plot_stuff
-#+BEGIN_SRC gnuplot :var data="x" :file "/tmp/xyz_plot.png" :results silent
+#+BEGIN_SRC gnuplot :var data="x" :file "/tmp/ignored.png" :results silent
 plot data u 1:2 w l ls 1
 #+END_SRC
 ** Use calculation results of other src blocks as parameters
