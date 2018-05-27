@@ -12,10 +12,15 @@ Spice source blocks are interpreted as circuit descriptions until an
 (surrounded by '.control' and '.endc' lines). *If there is no '.end'*
 *line all of the src block is interpreted as a control block!*
 
+* Installation
+
+Add ~ob-spice.el~ to your load-path and add ~(spice . t)~ to to your
+~org-babel-load-languages~ list.
+
 * Examples
-  To look at the src block header arguments look at this file in raw
-  mode. Or load it into your emacs (using eww for example) and turn on
-  org-mode.
+To look at the src block header arguments look at this file in raw
+mode. Or load it into your emacs (using eww for example) and turn on
+org-mode.
 ** Load a circuit for later simulation
 #+BEGIN_SRC spice :results output
 ,* RC
