@@ -118,6 +118,7 @@ wrdata $file v(1)
 
 #+RESULTS:
 [[file:/tmp/xyz.png]]
+
 ** Use calculation results of other src blocks as parameters
 
 Parameters calculated in any language can be included as variables.
