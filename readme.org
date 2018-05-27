@@ -12,8 +12,11 @@ Spice source blocks are interpreted as circuit descriptions until an
 (surrounded by '.control' and '.endc' lines). *If there is no '.end'*
 *line all of the src block is interpreted as a control block!*
 
-* Use cases
-** Just load some circuit for later simulation:
+* Examples
+  To look at the src block header arguments look at this file in raw
+  mode. Or load it into your emacs (using eww for example) and turn on
+  org-mode.
+** Load a circuit for later simulation
 #+BEGIN_SRC spice :results output
 ,* RC
 r1 1 0 10k
@@ -26,19 +29,19 @@ c1 1 0 1p
 : Circuit: * rc
 
 ** Execute some stuff
-#+BEGIN_SRC spice
+#+BEGIN_SRC spice :exports both
 echo "Hello world"
 #+END_SRC
 #+RESULTS:
 : Hello world
 
-#+BEGIN_SRC spice
+#+BEGIN_SRC spice :exports both
 echo "0,1,2,3"
 #+END_SRC
 #+RESULTS:
 | 0 | 1 | 2 | 3 |
 
-** Plot some voltages and return png
+** Plot some voltages and return png plot
 #+BEGIN_SRC spice :var file="/tmp/xzy" :results file
 ,*RC circuit
 r1 1 0 10k
@@ -59,7 +62,7 @@ gnuplot $file v(1)
 [[file:/tmp/xzy.png]]
 
 ** Do measurements and return results
-#+BEGIN_SRC spice :session spicetest :results value
+#+BEGIN_SRC spice :results value
 ,*Time Constant Measurement
 r1 1 0 10k
 c1 1 0 1p
@@ -81,6 +84,11 @@ echo $&value_at_tau ,$&value_at_five_tau
 | 0.36798 | 0.00671732 |
 
 ** Write simulation data to file and return file name
+
+A gnuplot block is called on the result of the spice block using the
+~:post~ argument. This allows the usage of all gnuplot options instead
+of the limited ngspice subset.
+
 #+BEGIN_SRC spice :var file="/tmp/xyz" :post plot_stuff[:file /tmp/xyz.png](data=*this*) :results file
 ,*RC circuit
 r1 1 0 10k
@@ -98,39 +106,45 @@ wrdata $file v(1)
 [[file:/tmp/xyz.png]]
 
 #+NAME: plot_stuff
-#+BEGIN_SRC gnuplot :var data="x" :file "/tmp/ignored.png" :results silent
+#+BEGIN_SRC gnuplot :var data="whatever" :file "/tmp/ignored.png" :results silent
 plot data u 1:2 w l ls 1
 #+END_SRC
 ** Use calculation results of other src blocks as parameters
+
+Parameters calculated in any language can be included as variables.
+
 #+NAME: dim1_params
 #+BEGIN_SRC ruby :exports none
-[7.3260073260073255e-06,1.3215597400496679e-05,5.411787135503391e-06,2.344322344322345e-05,2.4e-06, 100.0]
+[7.326e-06,1.321e-05,5.4117e-06,2.344e-05,2.4e-06, 100.0]
 #+END_SRC
 #+RESULTS: dim1_params
-| 7.3260073260073255e-06 | 1.3215597400496679e-05 | 5.411787135503391e-06 | 2.344322344322345e-05 | 2.4e-06 | 100.0 |
+| 7.326e-06 | 1.321e-05 | 5.4117e-06 | 2.344e-05 | 2.4e-06 | 100.0 |
 
 #+NAME: dim1_plot
 #+BEGIN_SRC gnuplot :var data="x" :file /tmp/ignored.png :results silent :exports none
- set terminal pngcairo size 640,300 enhanced
- set format y "%.0s%cV"
- set format x "%.0s%cs"
- set xrange [190e-9:260e-9]
- set ytics 5e-3
- set xlabel "t"
- plot data using 1:2 w l ls 2 t "V_{out}"
+set terminal pngcairo size 640,300 enhanced
+set format y "%.0s%cV"
+set format x "%.0s%cs"
+set xrange [190e-9:260e-9]
+set yrange [-5e-3:11e-3]
+set grid
+set ytics 5e-3
+set xlabel "t"
+plot data using 1:2 w l ls 2 t "V_{out}"
 #+END_SRC
 
+#+NAME: dim1
 #+BEGIN_SRC spice :session test :var dim=dim1_params :results output
 ,* DAC.asc
 .model NMOS NMOS
 .model PMOS PMOS
-.lib /home/fred/spice/library/ngspice/CM5/CM5-N.phy CM5
-M1 0 VDD N005 N005 MP7 l=$dim[5] w=$dim[4]
-M2 VOUT VCTRL N005 N005 MP7 l=$dim[5] w=$dim[4]
-M4 N003 N002 VDD VDD MP7 l=$dim[3] w=$dim[2]
-M3 N002 N002 VDD VDD MP7 l=$dim[3] w=$dim[2]
-M5 N005 N004 N003 N003 MP7 l=$dim[3] w=$dim[2]
-M6 N004 N004 N002 N002 MP7 l=$dim[3] w=$dim[2]
+.model mosp pmos level=8 version=3.3.0 
+M1 0 VDD N005 N005 mosp l=$dim[5] w=$dim[4]
+M2 VOUT VCTRL N005 N005 mosp l=$dim[5] w=$dim[4]
+M4 N003 N002 VDD VDD mosp l=$dim[3] w=$dim[2]
+M3 N002 N002 VDD VDD mosp l=$dim[3] w=$dim[2]
+M5 N005 N004 N003 N003 mosp l=$dim[3] w=$dim[2]
+M6 N004 N004 N002 N002 mosp l=$dim[3] w=$dim[2]
 RL VOUT 0 $dim[6]
 CL VOUT 0 10p
 VDD VDD 0 5
@@ -142,18 +156,62 @@ VM VDD N001 0
 .end
 #+END_SRC
 
-#+RESULTS:
-: Circuit: * dac.asc
-
-#+NAME: dim1
-#+BEGIN_SRC spice :session test :var file="/tmp/dim1" dim=dim1_params :post dim1_plot[:file /tmp/dim1.png](data=*this*) :results file
-save all
+#+BEGIN_SRC spice :session test :var file="/tmp/dim1" dim=dim1_params :post dim1_plot[:file /tmp/dim1.png](data=*this*) :results file :noweb yes
+<<dim1>>
 run
 wrdata $file v(vout)
 #+END_SRC
 
-#+RESULTS: dim1
+#+RESULTS:
 [[file:/tmp/dim1.png]]
-* Current supported Flags
-** :dir
-Working directory to run the src block in. Default is the value of `default-directory'.
+
+* Current supported special Flags
+  - ~:dir~: Working directory to run the src block in. Default is the
+    value of ~default-directory~.
+* Variable handling
+
+Variables can either be strings or arrays represented by ~$var~ or
+~$var[0]~. Variables in the circuit part are replaced with their value
+using a regex search. This supports only positive indexes at the
+moment. Variables in the control part are handled by setting their
+value in the spice session and letting spice figure out their value on
+its own. Vector/Array indexing in /ngspice/ starts with index 1 not 0!
+To generate file names a ~$file~ variable can be set and file extensions
+can be appended using this notation:
+#+BEGIN_SRC spice :var file="result/test1" :results output :exports both
+echo $file\.txt
+echo $file\.png
+#+END_SRC
+
+#+RESULTS:
+: result/test1.txt
+: result/test1.png
+
+* Result type handling
+
+  If RESULT-TYPE equals ~output~ return all outputs, if it equals ~value~
+  return only value of last statement.\\
+  If the last command was any of ~wrdata~, ~write~ or ~gnuplot~ using
+  result-type ~value~ returns the corresponding filename.\\
+  To output multiple values as a table use either " ," or "\," as
+  separator or quote the whole echo string and use ",".
+  #+BEGIN_SRC spice :var x=6.13 :exports both
+  echo 1 ,$x ,abc
+  #+END_SRC
+
+  #+RESULTS:
+  | 1 | 6.13 | abc |
+
+  #+BEGIN_SRC spice :var x=6.13 :exports both
+  echo 1\,$x\,abc
+  #+END_SRC
+
+  #+RESULTS:
+  | 1 | 6.13 | abc |
+
+  #+BEGIN_SRC spice :var x=6.13 :exports both
+  echo "1,$x,abc"
+  #+END_SRC
+
+  #+RESULTS:
+  | 1 | 6.13 | abc |
