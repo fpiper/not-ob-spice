@@ -28,13 +28,11 @@
 
 (require 'ob)
 
-(make-comint "spice" "ngspice")
-
 (defvar org-babel-spice-eoe-indicator ":org_babel_spice_eoe"
   "String to indicate that evaluation has completed.")
-
 (defvar org-babel-spice-command "ngspice"
   "Name of command to use for executing ngspice.")
+
 (defun org-babel-spice-initiate-session (&optional session dir _params)
   "Initiate a ngspice session.
 Create comint buffer SESSION running ngspice starting in
@@ -46,28 +44,8 @@ default-directory or DIR if specified."
 	;; absolute dir
 	(comint-simple-send session (format "cd %s" dir))
       ;; relative dir
-      (comint-simple-send session (format "cd %s" default-directory))
-    session
-    )))
-(defun org-babel-prep-session:spice (session params)
-  "Prepare SESSION according to header arguments in PARAMS."
-  (let ((session (org-babel-spice-initiate-session session))
-        (var-lines (org-babel-variable-assignments:spice params)))
-    (org-babel-comint-in-buffer session
-      (sit-for .5) (goto-char (point-max))
-      (mapc (lambda (var)
-              (insert var) (comint-send-input nil t)
-              (org-babel-comint-wait-for-output session)
-              (sit-for .1) (goto-char (point-max))) var-lines))
+      (comint-simple-send session (format "cd %s" default-directory)))
     session))
-(defun org-babel-load-session:spice (session body params)
-  "Load BODY into SESSION."
-  (save-window-excursion
-    (let ((buffer (org-babel-prep-session:spice session params)))
-      (with-current-buffer buffer
-        (goto-char (process-mark (get-buffer-process (current-buffer))))
-        (insert (org-babel-chomp body)))
-      buffer)))
 
 ;; helper
 
@@ -85,7 +63,6 @@ default-directory or DIR if specified."
       (concat "( " (mapconcat #'org-babel-spice-var-to-spice var " ") " )")
     (format "%S" var)))
 
-;; (lambda (text) (setq body (concat text "\n" body)))
 (defun org-babel-spice-vector-search (body vars)
   "Replace first instance in BODY for all VARS."
   (mapc (lambda (pair)
@@ -116,11 +93,11 @@ default-directory or DIR if specified."
       (setq body (org-babel-spice-vector-search body vars))
       )
     ;; replace any variable names preceded by '$' with the actual
-    ;; value of the variable. Matches only with succeeding space or
-    ;; end of line to prevent namespace limitations.
+    ;; value of the variable. Matches only with succeeding space, dot
+    ;; or end of line to prevent namespace limitations.
     (mapc (lambda (pair)
             (setq body (replace-regexp-in-string
-                        (format "\\$%s\\( \\)\\|\\$%s$" (car pair)
+                        (format "\\$%s\\([ \.]\\)\\|\\$%s$" (car pair)
                                 (car pair))
                         (format "%s\1" (cdr pair))
                         body)))
@@ -130,11 +107,8 @@ default-directory or DIR if specified."
   "Expand BODY according to PARAMS, return the expanded body."
   (let ((vars (org-babel--get-vars params))
         (prologue (cdr (assq :prologue params)))
-        (epilogue (cdr (assq :epilogue params)))
-        (file (cdr (assq :file params))))
+        (epilogue (cdr (assq :epilogue params))))
     (setq body (org-babel-spice-replace-vars body vars))
-    ;; TODO :file stuff ....
-
     ;; add prologue/epilogue
     (when prologue (setq body (concat prologue "\n" body)))
     (when epilogue (setq body (concat body "\n" epilogue)))
@@ -155,21 +129,20 @@ default-directory or DIR if specified."
   "Execute a block of Spice code with Babel.
 This function is called by `org-babel-execute-src-block'."
   (let* (;(body (org-babel-expand-body:spice body params))
-         (gnuplot (cdr (assq :gnuplot params)))
          (result-params (cdr (assq :result-params params)))
          (result-type (cdr (assq :result-type params)))
          (session (org-babel-spice-initiate-session
                    (cdr (assq :session params))
                    (cdr (assq :dir params))))
          (vars (org-babel--get-vars params))
-         (no-source (cdr (assq :no-source params)))
          (break-index (if (string-match "^ *\.end *$" body)
                           (match-end 0) 0))
          ;;vars need to be replaced as they don't work when using source
          (circuit-body (org-babel-expand-body:spice
                         (substring body 0 break-index)
                         (assq-delete-all :epilogue (copy-alist params))))
-         ;; todo: replace vars. :-( → set vars break when doing something like $file.txt
+         ;; vars can be managed using set
+	 ;; just remember to use $file\.txt instead of $file.txt
          (control-body (org-babel-spice-trim-body (substring body break-index)))
          (full-control-body (if (not (string= control-body ""))
 				(org-babel-expand-body:generic
@@ -179,42 +152,24 @@ This function is called by `org-babel-execute-src-block'."
          (circuit-file (if circuit-body (org-babel-temp-file "spice-body-" ".cir")))
          (result))
 
-
-    (message (concat "circuit:\n" circuit-body))
-    (message (concat "\n-----\ncontrol:\n" control-body))
-
     ;; Source circuit-body
     (with-temp-file circuit-file (insert circuit-body))
     ;; Evaluate
-    (setq result (org-babel-spice-evaluate session full-control-body
-					   result-type circuit-file result-params))
+    (org-babel-spice-evaluate session full-control-body
+			      result-type circuit-file result-params)))
 
-    ;; TODO deal with temporary files
-
-    ;;(org-babel-eval "ngspice -b " body)
-    ;; Write body to temp file & execute with ngspice comint buffer and ~source file~
-
-
-    ;; TODO read outputs from files
-
-    ;; TODO gnuplot options
-    (if (string= "yes" gnuplot)
-        nil ;return content(!) of gnuplot.plt for :post processing with gnuplot block?
-      nil ;return normal spice output
-      )
-    result
-    ))
 (defun org-babel-spice-source (buffer file)
-  "Source FILE in ngspice process running in BUFFER and return results."
+  "Use ngspice process in BUFFER to source FILE and return results."
   (let ((body (concat "source " file)))
     (org-babel-spice-evaluate buffer body 'value)))
 (defun org-babel-spice-evaluate (buffer body result-type &optional file result-params)
-  "Use BUFFER running ngspice process to eval BODY and return results.
+  "Use ngspice process in BUFFER to eval BODY and return results.
 If RESULT-TYPE equals `output' return all outputs, if it equals
-`value' return only value of last statement.  FILE can refer to a
-spice input file that is sourced before BODY execution is started."
+`value' return only value of last statement. FILE can refer to a
+spice input file that is sourced before BODY execution is
+started."
   (let ((eoe-string (format "echo \"%s\"" org-babel-spice-eoe-indicator))
-	(eval-body (if file (concat "source " file "\n" body) "")))
+        (eval-body (if file (concat "source " file "\n" body) "")))
     (pcase result-type
       (`output
        ;; Force session to be ready
@@ -271,8 +226,6 @@ Commands that write to files return the filename."
 		    (match-end 0) 0))
 	 (type (substring result 0 index))
 	 (arg (replace-regexp-in-string "^ *[^ ]* \\([^ ]*\\).*" "\\1" result)))
-    (message type)
-    (message arg)
     (pcase type
       ((or "wrdata" "write") arg)
       ("gnuplot" (format "%s.png" arg))
