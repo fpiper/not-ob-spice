@@ -1,5 +1,9 @@
 ;;; ob-spice.el --- Babel Functions for spice
-;;; -*- coding: utf-8 -*-
+
+;; Author: Ferdinand Pieper <f.pi@mail.de>
+;; Keywords: literate programming, reproducible research
+
+;; Copyright (c) 2018 Ferdinand Pieper
 
 ;; License: GPL v3, or any later version
 ;;
@@ -18,7 +22,7 @@
 
 ;;; Commentary:
 
-;; Org-Babel support for evaluating spice.
+;; Org-Babel support for evaluating spice simulations.
 
 ;;; Requirements:
 
