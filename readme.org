@@ -9,8 +9,8 @@ multiple src blocks.
 
 Spice source blocks are interpreted as circuit descriptions until an
 '.end' line is encountered. After that a control part may follow
-(surrounded by '.control' and '.endc' lines). *If there is no '.end'*
-*line all of the src block is interpreted as a control block!*
+(surrounded by '.control' and '.endc' lines). If there is no '.end'
+line all of the src block is interpreted as a control block!
 
 * Installation
 
@@ -34,19 +34,23 @@ c1 1 0 1p
 : Circuit: * rc
 
 ** Execute some stuff
+#+NAME: ex_1
 #+BEGIN_SRC spice :exports both
 echo "Hello world"
 #+END_SRC
-#+RESULTS:
+returns
+#+RESULTS: ex_1
 : Hello world
 
+#+NAME: ex_2
 #+BEGIN_SRC spice :exports both
 echo "0,1,2,3"
 #+END_SRC
-#+RESULTS:
+returns
+#+RESULTS: ex_2
 | 0 | 1 | 2 | 3 |
 
-** Plot some voltages and return png plot
+** Plot some voltages and return png
 #+BEGIN_SRC spice :var file="/tmp/xzy" :results file
 ,*RC circuit
 r1 1 0 10k
@@ -67,7 +71,7 @@ gnuplot $file v(1)
 [[file:/tmp/xzy.png]]
 
 ** Do measurements and return results
-#+BEGIN_SRC spice :results value
+#+BEGIN_SRC spice :results value :exports both
 ,*Time Constant Measurement
 r1 1 0 10k
 c1 1 0 1p
@@ -94,6 +98,11 @@ A gnuplot block is called on the result of the spice block using the
 ~:post~ argument. This allows the usage of all gnuplot options instead
 of the limited ngspice subset.
 
+#+NAME: plot_stuff
+#+BEGIN_SRC gnuplot :var data="whatever" :file "/tmp/ignored.png" :results silent
+plot data u 1:2 w l ls 1
+#+END_SRC
+
 #+BEGIN_SRC spice :var file="/tmp/xyz" :post plot_stuff[:file /tmp/xyz.png](data=*this*) :results file
 ,*RC circuit
 r1 1 0 10k
@@ -109,24 +118,21 @@ wrdata $file v(1)
 
 #+RESULTS:
 [[file:/tmp/xyz.png]]
-
-#+NAME: plot_stuff
-#+BEGIN_SRC gnuplot :var data="whatever" :file "/tmp/ignored.png" :results silent
-plot data u 1:2 w l ls 1
-#+END_SRC
 ** Use calculation results of other src blocks as parameters
 
 Parameters calculated in any language can be included as variables.
 
+Using ruby:
 #+NAME: dim1_params
-#+BEGIN_SRC ruby :exports none
+#+BEGIN_SRC ruby :exports code
 [7.326e-06,1.321e-05,5.4117e-06,2.344e-05,2.4e-06, 100.0]
 #+END_SRC
 #+RESULTS: dim1_params
 | 7.326e-06 | 1.321e-05 | 5.4117e-06 | 2.344e-05 | 2.4e-06 | 100.0 |
 
+Gnuplot code:
 #+NAME: dim1_plot
-#+BEGIN_SRC gnuplot :var data="x" :file /tmp/ignored.png :results silent :exports none
+#+BEGIN_SRC gnuplot :var data="x" :file /tmp/ignored.png :results silent :exports code
 set terminal pngcairo size 640,300 enhanced
 set format y "%.0s%cV"
 set format x "%.0s%cs"
@@ -138,6 +144,7 @@ set xlabel "t"
 plot data using 1:2 w l ls 2 t "V_{out}"
 #+END_SRC
 
+Circuit description:
 #+NAME: dim1
 #+BEGIN_SRC spice :session test :var dim=dim1_params :results output
 ,* DAC.asc
@@ -161,6 +168,7 @@ VM VDD N001 0
 .end
 #+END_SRC
 
+Evaluated spice block:
 #+BEGIN_SRC spice :session test :var file="/tmp/dim1" dim=dim1_params :post dim1_plot[:file /tmp/dim1.png](data=*this*) :results file :noweb yes
 <<dim1>>
 run
@@ -183,12 +191,13 @@ value in the spice session and letting spice figure out their value on
 its own. Vector/Array indexing in /ngspice/ starts with index 1 not 0!
 To generate file names a ~$file~ variable can be set and file extensions
 can be appended using this notation:
+#+NAME: ex_filename
 #+BEGIN_SRC spice :var file="result/test1" :results output :exports both
 echo $file\.txt
 echo $file\.png
 #+END_SRC
-
-#+RESULTS:
+returns
+#+RESULTS: ex_filename
 : result/test1.txt
 : result/test1.png
 
