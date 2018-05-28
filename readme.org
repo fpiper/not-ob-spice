@@ -18,40 +18,41 @@ Add ~ob-spice.el~ to your load-path and add ~(spice . t)~ to to your
 ~org-babel-load-languages~ list.
 
 * Examples
-To look at the src block header arguments look at this file in raw
-mode. Or load it into your emacs (using eww for example) and turn on
-org-mode.
 ** Load a circuit for later simulation
-#+BEGIN_SRC spice :results output
+#+BEGIN_SRC org
+,#+BEGIN_SRC spice :results output
 ,* RC
 r1 1 0 10k
 c1 1 0 1p
 .IC V(1)=1
 .tran 1n 0.1u
 .end
-#+END_SRC
-#+RESULTS:
+,#+END_SRC
+
+,#+RESULTS:
 : Circuit: * rc
-
+#+END_SRC
 ** Execute some stuff
-#+NAME: ex_1
-#+BEGIN_SRC spice :exports both
+#+BEGIN_SRC org
+,#+BEGIN_SRC spice
 echo "Hello world"
-#+END_SRC
-returns
-#+RESULTS: ex_1
-: Hello world
+,#+END_SRC
 
-#+NAME: ex_2
-#+BEGIN_SRC spice :exports both
-echo "0,1,2,3"
+,#+RESULTS:
+: Hello world
 #+END_SRC
-returns
-#+RESULTS: ex_2
+#+BEGIN_SRC org
+,#+BEGIN_SRC spice
+echo "0,1,2,3"
+,#+END_SRC
+
+,#+RESULTS:
 | 0 | 1 | 2 | 3 |
+#+END_SRC
 
 ** Plot some voltages and return png
-#+BEGIN_SRC spice :var file="/tmp/xzy" :results file
+#+BEGIN_SRC org
+,#+BEGIN_SRC spice :var file="/tmp/simpleplot" :results file
 ,*RC circuit
 r1 1 0 10k
 c1 1 0 1p
@@ -65,13 +66,15 @@ run
 set gnuplot_terminal=png
 gnuplot $file v(1)
 .endc
+,#+END_SRC
+
+,#+RESULTS:
+[[file:/tmp/simpleplot.png]]
 #+END_SRC
 
-#+RESULTS:
-[[file:/tmp/xzy.png]]
-
 ** Do measurements and return results
-#+BEGIN_SRC spice :results value :exports both
+#+BEGIN_SRC org
+,#+BEGIN_SRC spice :results value
 ,*Time Constant Measurement
 r1 1 0 10k
 c1 1 0 1p
@@ -87,23 +90,27 @@ meas tran value_at_tau find V(1) at=1e-8
 meas tran value_at_five_tau find V(1) at=5e-8
 echo $&value_at_tau ,$&value_at_five_tau
 .endc
-#+END_SRC
+,#+END_SRC
 
-#+RESULTS:
+,#+RESULTS:
 | 0.36798 | 0.00671732 |
+#+END_SRC
 
 ** Write simulation data to file and return file name
 
 A gnuplot block is called on the result of the spice block using the
-~:post~ argument. This allows the usage of all gnuplot options instead
-of the limited ngspice subset.
+~:post~ header argument. This allows the usage of all gnuplot options instead
+of the limited ngspice subset. Note the use of square brackets in the
+~:post~ header argument.
 
-#+NAME: plot_stuff
-#+BEGIN_SRC gnuplot :var data="whatever" :file "/tmp/ignored.png" :results silent
+#+BEGIN_SRC org
+,#+NAME: plot_stuff
+,#+BEGIN_SRC gnuplot :var data="ignored"
+reset
 plot data u 1:2 w l ls 1
-#+END_SRC
+,#+END_SRC
 
-#+BEGIN_SRC spice :var file="/tmp/xyz" :post plot_stuff[:file /tmp/xyz.png](data=*this*) :results file
+,#+BEGIN_SRC spice :var file="/tmp/rc" :post plot_stuff[:file /tmp/rc.png](data=*this*) :results file
 ,*RC circuit
 r1 1 0 10k
 c1 1 0 1p
@@ -114,26 +121,24 @@ c1 1 0 1p
 run
 wrdata $file v(1)
 .endc
-#+END_SRC
+,#+END_SRC
 
-#+RESULTS:
-[[file:/tmp/xyz.png]]
+,#+RESULTS:
+[[file:/tmp/rc.png]]
+#+END_SRC
 
 ** Use calculation results of other src blocks as parameters
 
 Parameters calculated in any language can be included as variables.
 
-Using ruby:
-#+NAME: dim1_params
-#+BEGIN_SRC ruby :exports code
+#+BEGIN_SRC org
+,#+NAME: dim1_params
+,#+BEGIN_SRC ruby
 [7.326e-06,1.321e-05,5.4117e-06,2.344e-05,2.4e-06, 100.0]
-#+END_SRC
-#+RESULTS: dim1_params
-| 7.326e-06 | 1.321e-05 | 5.4117e-06 | 2.344e-05 | 2.4e-06 | 100.0 |
+,#+END_SRC
 
-Gnuplot code:
-#+NAME: dim1_plot
-#+BEGIN_SRC gnuplot :var data="x" :file /tmp/ignored.png :results silent :exports code
+,#+NAME: dim1_plot
+,#+BEGIN_SRC gnuplot :var data="x"
 set terminal pngcairo size 640,300 enhanced
 set format y "%.0s%cV"
 set format x "%.0s%cs"
@@ -143,11 +148,10 @@ set grid
 set ytics 5e-3
 set xlabel "t"
 plot data using 1:2 w l ls 2 t "V_{out}"
-#+END_SRC
+,#+END_SRC
 
-Circuit description:
-#+NAME: dim1
-#+BEGIN_SRC spice :session test :var dim=dim1_params :results output :eval never
+,#+NAME: dim1
+,#+BEGIN_SRC spice :eval never
 ,* DAC.asc
 .model mosp pmos level=8 version=3.3.0 
 M1 0 VDD N005 N005 mosp l=$dim[5] w=$dim[4]
@@ -165,17 +169,18 @@ V2 VCTRL 0 PULSE(0 5 0 1n 1n 200n 420n)
 VM VDD N001 0
 .tran 1n 300n 190n
 .end
-#+END_SRC
+,#+END_SRC
 
-Evaluated spice block:
-#+BEGIN_SRC spice :session test :var file="/tmp/dim1" dim=dim1_params :post dim1_plot[:file /tmp/dim1.png](data=*this*) :results file :noweb yes
+,#+HEADER: :post dim1_plot[:file /tmp/dim1.png](data=*this*) :noweb yes
+,#+BEGIN_SRC spice :session test :var file="/tmp/dim1" dim=dim1_params :results file
 <<dim1>>
 run
 wrdata $file v(vout)
-#+END_SRC
+,#+END_SRC
 
-#+RESULTS:
+,#+RESULTS:
 [[file:/tmp/dim1.png]]
+#+END_SRC
 
 * Current supported special Flags
   - ~:dir~: Working directory to run the src block in. Default is the
@@ -190,41 +195,44 @@ value in the spice session and letting spice figure out their value on
 its own. Vector/Array indexing in /ngspice/ starts with index 1 not 0!
 To generate file names a ~$file~ variable can be set and file extensions
 can be appended using this notation:
-#+NAME: ex_filename
-#+BEGIN_SRC spice :var file="result/test1" :results output :exports both
+#+BEGIN_SRC org
+,#+BEGIN_SRC spice :var file="result/test1" :results output
 echo $file\.txt
 echo $file\.png
-#+END_SRC
-returns
-#+RESULTS: ex_filename
+,#+END_SRC
+
+,#+RESULTS:
 : result/test1.txt
 : result/test1.png
-
+#+END_SRC
 * Result type handling
 
-  If RESULT-TYPE equals ~output~ return all outputs, if it equals ~value~
-  return only value of last statement.\\
-  If the last command was any of ~wrdata~, ~write~ or ~gnuplot~ using
-  result-type ~value~ returns the corresponding filename.\\
-  To output multiple values as a table use either " ," or "\," as
-  separator or quote the whole echo string and use ",".
-  #+BEGIN_SRC spice :var x=6.13 :exports both
-  echo 1 ,$x ,abc
-  #+END_SRC
+If RESULT-TYPE equals ~output~ return all outputs, if it equals ~value~
+return only value of last statement.\\
+If the last command was any of ~wrdata~, ~write~ or ~gnuplot~ using
+result-type ~value~ returns the corresponding filename.\\
+To output multiple values as a table use either " ," or "\," as
+separator or quote the whole echo string and use ",".
 
-  #+RESULTS:
-  | 1 | 6.13 | abc |
+#+BEGIN_SRC org
+,#+BEGIN_SRC spice :var x=6.13 :exports both
+echo 1 ,$x ,abc
+,#+END_SRC
 
-  #+BEGIN_SRC spice :var x=6.13 :exports both
-  echo 1\,$x\,abc
-  #+END_SRC
+,#+RESULTS:
+| 1 | 6.13 | abc |
 
-  #+RESULTS:
-  | 1 | 6.13 | abc |
+,#+BEGIN_SRC spice :var x=6.13 :exports both
+echo 1\,$x\,abc
+,#+END_SRC
 
-  #+BEGIN_SRC spice :var x=6.13 :exports both
-  echo "1,$x,abc"
-  #+END_SRC
+,#+RESULTS:
+| 1 | 6.13 | abc |
 
-  #+RESULTS:
-  | 1 | 6.13 | abc |
+,#+BEGIN_SRC spice :var x=6.13 :exports both
+echo "1,$x,abc"
+,#+END_SRC
+
+,#+RESULTS:
+| 1 | 6.13 | abc |
+#+END_SRC
