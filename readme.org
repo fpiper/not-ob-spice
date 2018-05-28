@@ -147,10 +147,8 @@ plot data using 1:2 w l ls 2 t "V_{out}"
 
 Circuit description:
 #+NAME: dim1
-#+BEGIN_SRC spice :session test :var dim=dim1_params :results output
+#+BEGIN_SRC spice :session test :var dim=dim1_params :results output :eval never
 ,* DAC.asc
-.model NMOS NMOS
-.model PMOS PMOS
 .model mosp pmos level=8 version=3.3.0 
 M1 0 VDD N005 N005 mosp l=$dim[5] w=$dim[4]
 M2 VOUT VCTRL N005 N005 mosp l=$dim[5] w=$dim[4]
