@@ -46,9 +46,9 @@ default-directory or DIR if specified."
          (session (make-comint sessionname org-babel-spice-command)))
     (if (and dir (file-name-absolute-p dir))
 	;; absolute dir
-	(comint-simple-send session (format "cd %s" dir))
+	(comint-simple-send session (format "cd '%s'" dir))
       ;; relative dir
-      (comint-simple-send session (format "cd %s" default-directory)))
+      (comint-simple-send session (format "cd '%s'" default-directory)))
     session))
 
 ;; helper
