@@ -214,9 +214,21 @@ started."
 			  )))
 	   (comint-send-input nil t))
 	 ;; split result to output multiple comma separated vars as table
-	 (let ((result (org-babel-spice-cleanup-result
-			(org-babel-chomp
-			 (org-babel-eval-read-file tmp-file)))))
+	 (let* ((raw-result (org-babel-chomp (org-babel-eval-read-file tmp-file)))
+		(result nil))
+	   (when (string-match "^print" raw-result)
+	     (let ((tmp-file (org-babel-temp-file "spice-")))
+	       (org-babel-comint-with-output
+		   (buffer org-babel-spice-eoe-indicator)
+		 (mapc
+		  (lambda (line)
+		    (insert (org-babel-chomp line)) (comint-send-input nil t))
+		  (append (list (format "%s > %s" raw-result tmp-file))
+			  (list (format "echo \"%s\"" org-babel-spice-eoe-indicator))))
+		 (comint-send-input nil t))
+	       (setq raw-result (org-babel-eval-read-file tmp-file))))
+	   (setq result (org-babel-spice-cleanup-result
+			 (org-babel-chomp raw-result)))
 	   (if (or (not (listp result)) (cdr result))
 	       result
 	     (car result))
