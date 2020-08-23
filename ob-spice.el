@@ -103,7 +103,7 @@ default-directory or DIR if specified."
             (setq body (replace-regexp-in-string
                         (format "\\$%s\\([ \.]\\)\\|\\$%s$" (car pair)
                                 (car pair))
-                        (format "%s\1" (cdr pair))
+                        (format "%s\\1" (cdr pair))
                         body)))
           vars)
     body))
@@ -194,18 +194,18 @@ started."
 	      (mapconcat
 	       #'org-trim
 	       (org-babel-comint-with-output (buffer org-babel-spice-eoe-indicator t eval-body)
-		 (mapcar (lambda (line)
-			   (insert (org-babel-chomp line)) (comint-send-input nil t))
-			 (list eval-body
-			       eoe-string
-			       "\n")))
+		 (mapc (lambda (line)
+			 (insert (org-babel-chomp line)) (comint-send-input nil t))
+		       (list eval-body
+			     eoe-string
+			     "\n")))
 	       "\n") "[\r\n]")) 2) "\n"))))
        )
       (`value
        (let ((tmp-file (org-babel-temp-file "spice-")))
 	 (org-babel-comint-with-output
 	     (buffer org-babel-spice-eoe-indicator t eval-body)
-	   (mapcar
+	   (mapc
 	    (lambda (line)
 	      (insert (org-babel-chomp line)) (comint-send-input nil t))
 	    (append (list eval-body)
