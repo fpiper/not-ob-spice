@@ -40,7 +40,7 @@
 (defun org-babel-spice-initiate-session (&optional session dir _params)
   "Initiate a ngspice session.
 Create comint buffer SESSION running ngspice starting in
-default-directory or DIR if specified."
+`default-directory' or DIR if specified."
   (let* ((sessionname (if (or (not session) (string= session "none"))
                           "spice" session))
          (session (make-comint sessionname org-babel-spice-command)))
@@ -51,7 +51,7 @@ default-directory or DIR if specified."
       (comint-simple-send session (format "cd '%s'" default-directory)))
     session))
 
-;; helper
+;;;; Helper functions
 
 (defun org-babel-variable-assignments:spice (params)
   "Return a list of spice statements to set the variables in PARAMS."
@@ -61,6 +61,7 @@ default-directory or DIR if specified."
              (car pair)
              (org-babel-spice-var-to-spice (cdr pair))))
    (org-babel--get-vars params)))
+
 (defun org-babel-spice-var-to-spice (var)
   "Convert VAR into a spice variable."
   (if (listp var)
@@ -83,8 +84,7 @@ default-directory or DIR if specified."
                                   replacement
                                   (substring body (match-end 0)))))))
         vars)
-  body
-  )
+  body)
 
 (defun org-babel-spice-replace-vars (body vars)
   "Expand BODY according to VARS."
@@ -107,6 +107,7 @@ default-directory or DIR if specified."
                         body)))
           vars)
     body))
+
 (defun org-babel-expand-body:spice (body params)
   "Expand BODY according to PARAMS, return the expanded body."
   (let ((vars (org-babel--get-vars params))
@@ -129,6 +130,7 @@ default-directory or DIR if specified."
     ;; comment lines
     (replace-regexp-in-string
      "^ *\\*.*$" "" body))))
+
 (defun org-babel-execute:spice (body params)
   "Execute a block of Spice code with Babel.
 This function is called by `org-babel-execute-src-block'."
@@ -162,10 +164,6 @@ This function is called by `org-babel-execute-src-block'."
     (org-babel-spice-evaluate session full-control-body
 			      result-type circuit-file result-params)))
 
-(defun org-babel-spice-source (buffer file)
-  "Use ngspice process in BUFFER to source FILE and return results."
-  (let ((body (concat "source " file)))
-    (org-babel-spice-evaluate buffer body 'value)))
 (defun org-babel-spice-evaluate (buffer body result-type &optional file result-params)
   "Use ngspice process in BUFFER to eval BODY and return results.
 If RESULT-TYPE equals `output' return all outputs, if it equals
@@ -235,6 +233,7 @@ started."
 	   )))
       ;;todo: add "smart" result type to display measurements (or echos?) & plot filenames
       )))
+
 (defun org-babel-spice-cleanup-result (result)
   "Cleanup value to return instead of RESULT.
 Commands that write to files return the filename."
@@ -248,5 +247,5 @@ Commands that write to files return the filename."
       ("echo" (split-string (substring result (+ index 1)) ","))
       (_ result))))
 
-      (provide 'ob-spice)
+(provide 'ob-spice)
 ;;; ob-spice.el ends here
