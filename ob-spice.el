@@ -1,9 +1,9 @@
 ;;; ob-spice.el --- Babel Functions for spice
 
-;; Author: Ferdinand Pieper <f.pi@mail.de>
+;; Author: Ferdinand Pieper <mail@pie.tf>
 ;; Keywords: literate programming, reproducible research
 
-;; Copyright (c) 2018 Ferdinand Pieper
+;; Copyright (c) 2018-2020 Ferdinand Pieper
 
 ;; License: GPL v3, or any later version
 ;;
