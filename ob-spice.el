@@ -242,7 +242,7 @@ Commands that write to files return the filename."
 	 (type (substring result 0 index))
 	 (arg (replace-regexp-in-string "^ *[^ ]* \\([^ ]*\\).*" "\\1" result)))
     (pcase type
-      ((or "wrdata" "write") arg)
+      ((or "wrdata" "write" "hardcopy") arg)
       ("gnuplot" (format "%s.png" arg))
       ("echo" (split-string (substring result (+ index 1)) ","))
       (_ result))))
